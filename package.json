@@ -1,0 +1,20 @@
+{
+  "name": "verne-engine",
+  "version": "1.0.0",
+  "description": "A game framework for web VR games.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "VR",
+    "Game",
+    "three.js",
+    "3D"
+  ],
+  "author": "Esteban Devia Bedoya",
+  "license": "ISC",
+  "dependencies": {
+    "three": "^0.124.0"
+  }
+}
