@@ -11,7 +11,6 @@ This is a Javascript game framwork that helps us creating 3D VR Web games. It us
 ```
 import { APP } from "verne-engine";
 
-
     let player = new APP.Player();
 
     player.load(scene);

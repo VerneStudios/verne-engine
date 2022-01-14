@@ -1,3 +1,3 @@
-import { APP } from "./system/engine";
+import { VE } from "./system/engine.js";
 
-module.exports.APP = APP;
+export { VE };

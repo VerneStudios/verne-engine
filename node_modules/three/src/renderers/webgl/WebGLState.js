@@ -316,9 +316,11 @@ function WebGLState( gl, extensions, capabilities ) {
 
 	let enabledCapabilities = {};
 
+	let currentBoundFramebuffers = {};
+
 	let currentProgram = null;
 
-	let currentBlendingEnabled = null;
+	let currentBlendingEnabled = false;
 	let currentBlending = null;
 	let currentBlendEquation = null;
 	let currentBlendSrc = null;
@@ -357,8 +359,11 @@ function WebGLState( gl, extensions, capabilities ) {
 	let currentTextureSlot = null;
 	let currentBoundTextures = {};
 
-	const currentScissor = new Vector4();
-	const currentViewport = new Vector4();
+	const scissorParam = gl.getParameter( gl.SCISSOR_BOX );
+	const viewportParam = gl.getParameter( gl.VIEWPORT );
+
+	const currentScissor = new Vector4().fromArray( scissorParam );
+	const currentViewport = new Vector4().fromArray( viewportParam );
 
 	function createTexture( type, target, count ) {
 
@@ -422,6 +427,40 @@ function WebGLState( gl, extensions, capabilities ) {
 
 	}
 
+	function bindFramebuffer( target, framebuffer ) {
+
+		if ( currentBoundFramebuffers[ target ] !== framebuffer ) {
+
+			gl.bindFramebuffer( target, framebuffer );
+
+			currentBoundFramebuffers[ target ] = framebuffer;
+
+			if ( isWebGL2 ) {
+
+				// gl.DRAW_FRAMEBUFFER is equivalent to gl.FRAMEBUFFER
+
+				if ( target === gl.DRAW_FRAMEBUFFER ) {
+
+					currentBoundFramebuffers[ gl.FRAMEBUFFER ] = framebuffer;
+
+				}
+
+				if ( target === gl.FRAMEBUFFER ) {
+
+					currentBoundFramebuffers[ gl.DRAW_FRAMEBUFFER ] = framebuffer;
+
+				}
+
+			}
+
+			return true;
+
+		}
+
+		return false;
+
+	}
+
 	function useProgram( program ) {
 
 		if ( currentProgram !== program ) {
@@ -480,7 +519,7 @@ function WebGLState( gl, extensions, capabilities ) {
 
 		if ( blending === NoBlending ) {
 
-			if ( currentBlendingEnabled ) {
+			if ( currentBlendingEnabled === true ) {
 
 				disable( gl.BLEND );
 				currentBlendingEnabled = false;
@@ -491,7 +530,7 @@ function WebGLState( gl, extensions, capabilities ) {
 
 		}
 
-		if ( ! currentBlendingEnabled ) {
+		if ( currentBlendingEnabled === false ) {
 
 			enable( gl.BLEND );
 			currentBlendingEnabled = true;
@@ -641,6 +680,10 @@ function WebGLState( gl, extensions, capabilities ) {
 		}
 
 		setPolygonOffset( material.polygonOffset, material.polygonOffsetFactor, material.polygonOffsetUnits );
+
+		material.alphaToCoverage === true
+			? enable( gl.SAMPLE_ALPHA_TO_COVERAGE )
+			: disable( gl.SAMPLE_ALPHA_TO_COVERAGE );
 
 	}
 
@@ -821,6 +864,76 @@ function WebGLState( gl, extensions, capabilities ) {
 
 	}
 
+	function texSubImage2D() {
+
+		try {
+
+			gl.texSubImage2D.apply( gl, arguments );
+
+		} catch ( error ) {
+
+			console.error( 'THREE.WebGLState:', error );
+
+		}
+
+	}
+
+	function texSubImage3D() {
+
+		try {
+
+			gl.texSubImage3D.apply( gl, arguments );
+
+		} catch ( error ) {
+
+			console.error( 'THREE.WebGLState:', error );
+
+		}
+
+	}
+
+	function compressedTexSubImage2D() {
+
+		try {
+
+			gl.compressedTexSubImage2D.apply( gl, arguments );
+
+		} catch ( error ) {
+
+			console.error( 'THREE.WebGLState:', error );
+
+		}
+
+	}
+
+	function texStorage2D() {
+
+		try {
+
+			gl.texStorage2D.apply( gl, arguments );
+
+		} catch ( error ) {
+
+			console.error( 'THREE.WebGLState:', error );
+
+		}
+
+	}
+
+	function texStorage3D() {
+
+		try {
+
+			gl.texStorage3D.apply( gl, arguments );
+
+		} catch ( error ) {
+
+			console.error( 'THREE.WebGLState:', error );
+
+		}
+
+	}
+
 	function texImage2D() {
 
 		try {
@@ -877,14 +990,67 @@ function WebGLState( gl, extensions, capabilities ) {
 
 	function reset() {
 
+		// reset state
+
+		gl.disable( gl.BLEND );
+		gl.disable( gl.CULL_FACE );
+		gl.disable( gl.DEPTH_TEST );
+		gl.disable( gl.POLYGON_OFFSET_FILL );
+		gl.disable( gl.SCISSOR_TEST );
+		gl.disable( gl.STENCIL_TEST );
+		gl.disable( gl.SAMPLE_ALPHA_TO_COVERAGE );
+
+		gl.blendEquation( gl.FUNC_ADD );
+		gl.blendFunc( gl.ONE, gl.ZERO );
+		gl.blendFuncSeparate( gl.ONE, gl.ZERO, gl.ONE, gl.ZERO );
+
+		gl.colorMask( true, true, true, true );
+		gl.clearColor( 0, 0, 0, 0 );
+
+		gl.depthMask( true );
+		gl.depthFunc( gl.LESS );
+		gl.clearDepth( 1 );
+
+		gl.stencilMask( 0xffffffff );
+		gl.stencilFunc( gl.ALWAYS, 0, 0xffffffff );
+		gl.stencilOp( gl.KEEP, gl.KEEP, gl.KEEP );
+		gl.clearStencil( 0 );
+
+		gl.cullFace( gl.BACK );
+		gl.frontFace( gl.CCW );
+
+		gl.polygonOffset( 0, 0 );
+
+		gl.activeTexture( gl.TEXTURE0 );
+
+		gl.bindFramebuffer( gl.FRAMEBUFFER, null );
+
+		if ( isWebGL2 === true ) {
+
+			gl.bindFramebuffer( gl.DRAW_FRAMEBUFFER, null );
+			gl.bindFramebuffer( gl.READ_FRAMEBUFFER, null );
+
+		}
+
+		gl.useProgram( null );
+
+		gl.lineWidth( 1 );
+
+		gl.scissor( 0, 0, gl.canvas.width, gl.canvas.height );
+		gl.viewport( 0, 0, gl.canvas.width, gl.canvas.height );
+
+		// reset internals
+
 		enabledCapabilities = {};
 
 		currentTextureSlot = null;
 		currentBoundTextures = {};
 
+		currentBoundFramebuffers = {};
+
 		currentProgram = null;
 
-		currentBlendingEnabled = null;
+		currentBlendingEnabled = false;
 		currentBlending = null;
 		currentBlendEquation = null;
 		currentBlendSrc = null;
@@ -902,6 +1068,9 @@ function WebGLState( gl, extensions, capabilities ) {
 		currentPolygonOffsetFactor = null;
 		currentPolygonOffsetUnits = null;
 
+		currentScissor.set( 0, 0, gl.canvas.width, gl.canvas.height );
+		currentViewport.set( 0, 0, gl.canvas.width, gl.canvas.height );
+
 		colorBuffer.reset();
 		depthBuffer.reset();
 		stencilBuffer.reset();
@@ -918,6 +1087,8 @@ function WebGLState( gl, extensions, capabilities ) {
 
 		enable: enable,
 		disable: disable,
+
+		bindFramebuffer: bindFramebuffer,
 
 		useProgram: useProgram,
 
@@ -938,6 +1109,12 @@ function WebGLState( gl, extensions, capabilities ) {
 		compressedTexImage2D: compressedTexImage2D,
 		texImage2D: texImage2D,
 		texImage3D: texImage3D,
+
+		texStorage2D: texStorage2D,
+		texStorage3D: texStorage3D,
+		texSubImage2D: texSubImage2D,
+		texSubImage3D: texSubImage3D,
+		compressedTexSubImage2D: compressedTexSubImage2D,
 
 		scissor: scissor,
 		viewport: viewport,

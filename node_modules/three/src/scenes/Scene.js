@@ -6,8 +6,6 @@ class Scene extends Object3D {
 
 		super();
 
-		Object.defineProperty( this, 'isScene', { value: true } );
-
 		this.type = 'Scene';
 
 		this.background = null;
@@ -20,7 +18,7 @@ class Scene extends Object3D {
 
 		if ( typeof __THREE_DEVTOOLS__ !== 'undefined' ) {
 
-			__THREE_DEVTOOLS__.dispatchEvent( new CustomEvent( 'observe', { detail: this } ) ); // eslint-disable-line no-undef
+			__THREE_DEVTOOLS__.dispatchEvent( new CustomEvent( 'observe', { detail: this } ) );
 
 		}
 
@@ -47,8 +45,6 @@ class Scene extends Object3D {
 
 		const data = super.toJSON( meta );
 
-		if ( this.background !== null ) data.object.background = this.background.toJSON( meta );
-		if ( this.environment !== null ) data.object.environment = this.environment.toJSON( meta );
 		if ( this.fog !== null ) data.object.fog = this.fog.toJSON();
 
 		return data;
@@ -57,5 +53,6 @@ class Scene extends Object3D {
 
 }
 
+Scene.prototype.isScene = true;
 
 export { Scene };
